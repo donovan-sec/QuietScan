@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"image"
-	"image/draw"
 	"image/png"
 	"os"
 
@@ -12,7 +10,7 @@ import (
 
 func main() {
 	if len(os.Args) < 3 {
-		fmt.Println("Usage: go run convert-icon-multi.go <input.png> <output.ico>")
+		fmt.Println("Usage: go run ./tools/convert-icon-multi <input.png> <output.ico>")
 		os.Exit(1)
 	}
 

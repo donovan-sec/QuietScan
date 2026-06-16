@@ -10,7 +10,7 @@ import (
 
 func main() {
 	if len(os.Args) < 3 {
-		fmt.Println("Usage: go run convert-icon.go <input.png> <output.ico>")
+		fmt.Println("Usage: go run ./tools/convert-icon <input.png> <output.ico>")
 		os.Exit(1)
 	}
 

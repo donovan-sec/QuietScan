@@ -3,7 +3,7 @@
 
 echo "Converting assets/icon.png to assets/icon.ico..."
 
-go run -mod=mod tools/convert-icon.go assets/icon.png assets/icon.ico
+go run -mod=mod ./tools/convert-icon assets/icon.png assets/icon.ico
 
 if [ $? -eq 0 ]; then
     echo "✓ Successfully created assets/icon.ico"
