@@ -10,6 +10,34 @@ import (
 	"quietscan/types"
 )
 
+// sanitizeCSVCell neutralizes CSV formula injection. Spreadsheet apps (Excel,
+// LibreOffice, Sheets) execute any cell value beginning with =, +, -, @, or a
+// leading tab/carriage return as a formula. Vendor and Hostname values come from
+// network responses, so a hostile device on the LAN could set a hostname like
+// `=cmd|'/c calc'!A1` and have it run when the exported CSV is opened. The
+// encoding/csv writer escapes for CSV parsing but does nothing about formula
+// interpretation, so we prefix any dangerous value with a single quote, which
+// every major spreadsheet treats as "render as literal text".
+func sanitizeCSVCell(value string) string {
+	if value == "" {
+		return value
+	}
+	switch value[0] {
+	case '=', '+', '-', '@', '\t', '\r':
+		return "'" + value
+	}
+	return value
+}
+
+// sanitizeCSVRecord applies sanitizeCSVCell to every field in a record.
+func sanitizeCSVRecord(record []string) []string {
+	out := make([]string, len(record))
+	for i, field := range record {
+		out[i] = sanitizeCSVCell(field)
+	}
+	return out
+}
+
 var allowOverwrite = false // Set via SetAllowOverwrite
 
 // SetAllowOverwrite sets whether existing files can be overwritten
@@ -34,6 +62,11 @@ func ExportToCSV(result *types.ScanResult) (string, error) {
 	filename := fmt.Sprintf("quietscan-export-%s.csv", timestamp)
 	filepath := filepath.Join(cwd, filename)
 
+	// Validate file path before creating (consistent with ExportToCSVWithMetadata)
+	if err := ValidateFilePath(filepath, allowOverwrite); err != nil {
+		return "", fmt.Errorf("cannot write to output path: %v", err)
+	}
+
 	// Create CSV file
 	file, err := os.Create(filepath)
 	if err != nil {
@@ -50,10 +83,6 @@ func ExportToCSV(result *types.ScanResult) (string, error) {
 		return "", fmt.Errorf("failed to write CSV header: %v", err)
 	}
 
-	// Write scan metadata as comments (CSV doesn't support comments, so we'll add them as rows)
-	// Actually, let's add metadata in the header or as a separate section
-	// For simplicity, we'll just write the data rows
-
 	// Write device data
 	for _, device := range result.Devices {
 		record := []string{
@@ -62,7 +91,7 @@ func ExportToCSV(result *types.ScanResult) (string, error) {
 			device.Vendor,
 			device.Hostname,
 		}
-		if err := writer.Write(record); err != nil {
+		if err := writer.Write(sanitizeCSVRecord(record)); err != nil {
 			return "", fmt.Errorf("failed to write CSV record: %v", err)
 		}
 	}
@@ -138,7 +167,7 @@ func ExportToCSVWithMetadata(result *types.ScanResult) (string, error) {
 			device.Vendor,
 			device.Hostname,
 		}
-		if err := writer.Write(record); err != nil {
+		if err := writer.Write(sanitizeCSVRecord(record)); err != nil {
 			return "", fmt.Errorf("failed to write CSV record: %v", err)
 		}
 	}
